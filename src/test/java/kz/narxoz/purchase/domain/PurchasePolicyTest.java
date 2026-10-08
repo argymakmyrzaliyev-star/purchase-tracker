@@ -1,4 +1,4 @@
-package kz.narxoz.purchase;
+package kz.narxoz.purchase.domain;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -7,6 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PurchasePolicyTest {
+    private static Rule chain() {
+        Rule approvalGuard = new UnapprovedCannotOrder();
+        Rule transitions = new TransitionRule();
+        return (from, to) -> {
+            approvalGuard.check(from, to);
+            transitions.check(from, to);
+        };
+    }
+
     @ParameterizedTest(name = "{0} -> {1}; allowed = {2}")
     @CsvSource({
             "DRAFT, APPROVED, true",
@@ -16,9 +25,9 @@ class PurchasePolicyTest {
     })
     void matchesTheFourReadmeRows(PurchaseStatus from, PurchaseStatus to, boolean allowed) {
         if (allowed) {
-            assertEquals(to, PurchasePolicy.move(from, to));
+            assertEquals(to, new PurchasePolicy(chain()).move(from, to));
         } else {
-            assertThrows(IllegalStateException.class, () -> PurchasePolicy.move(from, to));
+            assertThrows(IllegalStateException.class, () -> new PurchasePolicy(chain()).move(from, to));
         }
     }
 
@@ -31,7 +40,7 @@ class PurchasePolicyTest {
             "ORDERED, APPROVED"
     })
     void rejectsOtherChanges(PurchaseStatus from, PurchaseStatus to) {
-        assertThrows(IllegalStateException.class, () -> PurchasePolicy.move(from, to));
+        assertThrows(IllegalStateException.class, () -> new PurchasePolicy(chain()).move(from, to));
     }
 
     @ParameterizedTest
@@ -41,6 +50,6 @@ class PurchasePolicyTest {
             "NULL, NULL"
     }, nullValues = "NULL")
     void rejectsMissingStatuses(PurchaseStatus from, PurchaseStatus to) {
-        assertThrows(NullPointerException.class, () -> PurchasePolicy.move(from, to));
+        assertThrows(NullPointerException.class, () -> new PurchasePolicy(chain()).move(from, to));
     }
 }

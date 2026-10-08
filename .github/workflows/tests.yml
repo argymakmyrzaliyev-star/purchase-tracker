@@ -20,5 +20,5 @@ jobs:
           cache: maven
       - name: Check Java version
         run: java -version
-      - name: Run tests
-        run: mvn -q test
+      - name: Verify project
+        run: mvn -q verify
