@@ -50,12 +50,12 @@ Use the Jira story ID supplied by your team in the PR title, for example `CSS-18
 
 Paste this checklist into the PR body:
 
-- [ ] Story IDs are in the title
+- [x] Story IDs are in the title
 - [x] Same product as Lab 1
 - [x] `domain` has no `org.springframework` import
 - [x] Two types implement `Rule`
-- [ ] `mvn -q verify` is green
-- [ ] `mvn spring-boot:run` starts
+- [x] `mvn -q verify` is green
+- [x] `mvn spring-boot:run` starts
 - [x] No secrets, `.env`, or `target/` committed
 
 Before opening the PR, run both commands above on JDK 21 and check off the two local-run items.
