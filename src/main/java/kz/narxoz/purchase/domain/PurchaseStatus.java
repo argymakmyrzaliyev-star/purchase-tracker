@@ -1,4 +1,4 @@
-package kz.narxoz.purchase;
+package kz.narxoz.purchase.domain;
 
 public enum PurchaseStatus {
     DRAFT,

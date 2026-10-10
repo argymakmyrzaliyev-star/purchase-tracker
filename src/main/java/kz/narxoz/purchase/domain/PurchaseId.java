@@ -1,4 +1,4 @@
-package kz.narxoz.purchase;
+package kz.narxoz.purchase.domain;
 
 /** Identifies a purchase request. */
 public record PurchaseId(String value) {

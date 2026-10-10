@@ -20,5 +20,11 @@ jobs:
           cache: maven
       - name: Check Java version
         run: java -version
-      - name: Run tests
-        run: mvn -q test
+      - name: Verify project
+        run: mvn -q verify
+      - name: Start Spring Boot application
+        timeout-minutes: 3
+        run: |
+          set -o pipefail
+          mvn -B --no-transfer-progress spring-boot:run | tee target/spring-boot-run.log
+          grep -F "Started Application in" target/spring-boot-run.log

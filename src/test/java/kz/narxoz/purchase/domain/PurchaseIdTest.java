@@ -1,4 +1,4 @@
-package kz.narxoz.purchase;
+package kz.narxoz.purchase.domain;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
