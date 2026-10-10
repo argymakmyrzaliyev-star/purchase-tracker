@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: css
+      POSTGRES_USER: css
+      POSTGRES_PASSWORD: css
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - purchase_pgdata:/var/lib/postgresql/data
+      - ./src/main/resources/db:/lab:ro
+      - ./scripts:/demo:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U css -d css"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  purchase_pgdata:

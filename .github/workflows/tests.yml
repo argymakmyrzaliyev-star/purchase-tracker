@@ -1,4 +1,4 @@
-name: Java 21 tests
+name: Java 21 and PostgreSQL tests
 
 on:
   push:
@@ -10,6 +10,26 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: css
+          POSTGRES_USER: css
+          POSTGRES_PASSWORD: css
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U css -d css"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/css
+      DB_USERNAME: css
+      DB_PASSWORD: css
+      PGPASSWORD: css
     steps:
       - uses: actions/checkout@v4
       - name: Set up Java 21
@@ -18,13 +38,50 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Check Java version
-        run: java -version
-      - name: Verify project
+      - name: Check domain boundaries
+        run: |
+          if grep -R -nE 'java\.sql|javax\.sql|org\.springframework' src/main/java/kz/narxoz/purchase/domain; then
+            echo "Domain must remain plain Java."
+            exit 1
+          fi
+      - name: Prove rollback in psql before Java tests
+        run: |
+          set -o pipefail
+          mkdir -p target
+          psql -h localhost -U css -d css -v ON_ERROR_STOP=1 -f src/main/resources/db/schema.sql
+          psql -h localhost -U css -d css -f scripts/rollback-demo.sql 2>&1 | tee target/psql-rollback.log
+          grep -F "PSQL ROLLBACK PASSED" target/psql-rollback.log
+      - name: Verify project against PostgreSQL
         run: mvn -q verify
-      - name: Start Spring Boot application
+      - name: Show test results
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree
+          totals = dict(tests=0, failures=0, errors=0, skipped=0)
+          for path in sorted(Path("target/surefire-reports").glob("TEST-*.xml")):
+              root = ElementTree.parse(path).getroot()
+              print(root.attrib["name"], {key: root.attrib.get(key, "0") for key in totals})
+              for key in totals:
+                  totals[key] += int(root.attrib.get(key, "0"))
+          print("TOTAL:", totals)
+          PY
+      - name: Start Spring Boot and demonstrate both transactions
         timeout-minutes: 3
         run: |
           set -o pipefail
-          mvn -B --no-transfer-progress spring-boot:run | tee target/spring-boot-run.log
-          grep -F "Started Application in" target/spring-boot-run.log
+          mvn -B --no-transfer-progress spring-boot:run -Dspring-boot.run.profiles=demo | tee target/spring-boot-demo.log
+          grep -F "Started Application in" target/spring-boot-demo.log
+          grep -F "ROLLBACK count = 0" target/spring-boot-demo.log
+          grep -F "COMMITTED count = 1" target/spring-boot-demo.log
+          grep -F "LAB 3 DEMO PASSED" target/spring-boot-demo.log
+      - name: Upload test and demonstration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab3-verification
+          path: |
+            target/surefire-reports/
+            target/psql-rollback.log
+            target/spring-boot-demo.log

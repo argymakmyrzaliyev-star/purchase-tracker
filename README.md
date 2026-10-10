@@ -1,63 +1,156 @@
-# Purchase Tracker
+# Purchase Tracker — Lab 3
 
-We build a purchase request tracker. People track purchase requests from drafting through manager approval to ordering. This is the same product theme as Lab 1, now joined to Spring Boot for Lab 2.
+Purchase requests move from drafting through approval to ordering. This is the same semester product as Labs 1 and 2. Lab 3 adds PostgreSQL persistence, a mocked outbound port, and transaction tests.
 
 ## Requirements
 
-- JDK 21
-- Maven 3.9 or later
+- JDK 21 and Maven 3.9 or later.
+- PostgreSQL 16 (the provided Compose file starts only the database).
+- Docker with Compose for the commands below, or an existing local PostgreSQL installation.
+- Run commands from the folder containing `pom.xml`.
 
-## Run and verify
+## Quick start
 
-From the repository root:
+For a new checkout:
 
 ```sh
+git clone --branch lab-3 https://github.com/argymakmyrzaliyev-star/purchase-tracker.git
+cd purchase-tracker
+docker compose up -d --wait
 mvn -q verify
+mvn spring-boot:run "-Dspring-boot.run.profiles=demo"
+```
+
+The demonstration prints:
+
+```text
+ROLLBACK count = 0
+COMMITTED count = 1
+LAB 3 DEMO PASSED
+```
+
+It uses fresh business keys on every run. The failed transaction leaves no rows; the first successful registration stays in the database. Each demo run deliberately adds one committed example purchase.
+
+For a normal startup without example purchases:
+
+```sh
 mvn spring-boot:run
 ```
 
-The application starts without opening a web server. A successful launch prints `Started Application`; the process then exits normally because this lab has no web server or background work. No REST API, database, or Docker setup is included.
+The hand-written `src/main/resources/db/schema.sql` is applied at startup. The app prints `Started Application` and exits normally because it has no web server or background work. No application container is built.
 
-GitHub Actions runs `mvn -q verify` and then launches the application separately with `mvn -B --no-transfer-progress spring-boot:run`. The startup check requires both a successful exit and the `Started Application in` log message.
+Stop the database with `docker compose stop`. The named volume retains its data.
 
-## Package boundaries
+## Database connection
 
-Arrows point inward: outer packages may depend on `domain`; domain does not depend on Spring or on outer packages.
+The classroom defaults are PostgreSQL at `localhost:5432/css`, username `css`, password `css`. They are local teaching credentials. An existing local PostgreSQL instance must have this database and role, with permission to create tables and the test schema.
 
-```mermaid
-flowchart TB
-  dto["dto (vendor JSON later)"] --> domain["domain (PurchaseId, PurchaseStatus, PurchasePolicy, Rule, two rules)"]
-  client["client (HTTP later)"] --> dto
-  handler["handler (PurchaseService)"] --> domain
-  config["config (Application, Rule chain)"] --> handler
-  config --> domain
+Override the connection with `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD`, or Spring's standard `SPRING_DATASOURCE_*` environment variables. Keep personal/cloud credentials out of Git.
+
+The tests use the separate `purchase_tracker_lab3_test` schema in the same database. They rebuild its `purchase_request` table before each database test; the application's `public.purchase_request` table is left intact. Run one verification process at a time against that test schema.
+
+## Week 5: prove rollback in psql first
+
+Start PostgreSQL, then apply the same SQL and run the rollback script:
+
+```sh
+docker compose up -d --wait
+docker compose exec -T postgres psql -U css -d css -v ON_ERROR_STOP=1 -f /lab/schema.sql
+docker compose exec -T postgres psql -U css -d css -f /demo/rollback-demo.sql
 ```
 
-`dto` and `client` are placeholders for later integration work. `handler` contains `PurchaseService`; no HTTP client or REST endpoint is implemented in this lab. The rule types and policy are plain Java and contain no `org.springframework` imports.
+The script performs `BEGIN`, inserts a fresh key twice, checks the expected SQLSTATE `23505`, explicitly issues `ROLLBACK`, and verifies count **0**. The duplicate-key error is expected. Success ends with:
+
+```text
+PSQL ROLLBACK PASSED: SQLSTATE 23505; count = 0
+```
+
+With a local PostgreSQL installation, run the same files using `psql -h localhost -U css -d css -f <file>`; enter the local password when prompted.
+
+## Identifiers and schema
+
+| Value | Java type | PostgreSQL column | Purpose |
+| --- | --- | --- | --- |
+| Internal identity | `PurchaseId(UUID)`, created by `newId()` | `id uuid PRIMARY KEY` | Stable surrogate key |
+| Human number | `PurchaseKey(String)`, e.g. `PR-19` | `business_key text NOT NULL UNIQUE` | Number shown to people |
+| Status | `PurchaseStatus` | `status text NOT NULL` with `CHECK` | DRAFT / APPROVED / ORDERED |
+| Description | Validated nonblank title | `title text NOT NULL` | Purchase details |
+| Creation time | Database default | `created_at timestamptz NOT NULL DEFAULT now()` | Creation timestamp |
+
+Lab 1's human string identifier and its null/blank validation now live in `PurchaseKey`; `PurchaseId` is the separate UUID identity required by Lab 3. No database from an earlier lab needed migration.
+
+There is one application table, `purchase_request`. Both the manual psql demonstration and Spring execute the same hand-written `schema.sql`. `IF NOT EXISTS` permits repeat startup; tests drop their isolated table first to validate creation from scratch.
 
 ## Purchase status rules
+
+These are the four rows retained in `PurchasePolicyTest` with `@ParameterizedTest` and `@CsvSource`.
 
 | From | To | Result | Business reason |
 | --- | --- | --- | --- |
 | `DRAFT` | `APPROVED` | Allowed | A manager approves the request. |
 | `APPROVED` | `ORDERED` | Allowed | The approved request can be sent to a supplier. |
 | `DRAFT` | `ORDERED` | Forbidden | The request cannot bypass manager approval. |
-| `ORDERED` | `DRAFT` | Forbidden | An order sent to a supplier cannot be reopened as a draft. |
+| `ORDERED` | `DRAFT` | Forbidden | A supplier order cannot be reopened as a draft. |
 
-`PurchaseService` is a Spring `@Service` that receives the `Rule` chain through its constructor. `PurchaseRulesConfiguration` wires two domain rule implementations: `UnapprovedCannotOrder` is the stop-factor, and `TransitionRule` enforces the full status table. `PurchasePolicy` calls the injected chain and remains framework-independent.
+Allowed moves return the target status; forbidden moves throw `IllegalStateException`. The SQL `CHECK` uses the same three statuses. Database mapping rejects unknown text rather than inventing a status.
 
-## Pull request
+## Package boundaries
 
-Lab 2 is submitted through [pull request #1](https://github.com/argymakmyrzaliyev-star/purchase-tracker/pull/1) from `CSS-3008-join-spring-boot` into `main`. The title must contain the exact Jira story key supplied by the team.
+Arrows show dependencies toward the domain:
 
-Paste this checklist into the PR body:
+```mermaid
+flowchart TD
+  config["config: Application, rule beans, demo"] --> handler["handler: PurchaseService"]
+  handler --> domain["domain: values, policy, Rule, repository port, DuplicatePurchase"]
+  persistence["persistence: PurchaseJdbc and status mapper"] --> domain
+  dto["dto: future payload mapping"] --> domain
+  client["client: future integrations"] --> domain
+```
 
-- [ ] Story IDs are in the title
-- [ ] Same product as Lab 1
-- [ ] `domain` has no `org.springframework` import
-- [ ] Two types implement `Rule`
-- [ ] `mvn -q verify` is green
-- [ ] `mvn spring-boot:run` starts
-- [ ] No secrets, `.env`, or `target/` committed
+- `PurchaseService` receives `Rule` and the `PurchaseRepository` outbound port through its constructor.
+- `PurchaseRulesConfiguration` wires `UnapprovedCannotOrder` and `TransitionRule`.
+- `PurchaseJdbc` implements the port with `JdbcTemplate`; INSERT, count, and lookup use `?` parameters.
+- The persistence adapter translates PostgreSQL unique violations into unchecked `DuplicatePurchase`. Other integrity failures are not mislabeled as duplicate keys.
+- `@Transactional` is on service methods. The service class is not final so Spring can proxy it.
+- The domain contains no Spring or JDBC dependencies. All SQL and row mapping stay in `persistence`.
 
-Mark the checklist items in the PR body after verifying them. The GitHub Actions run for the latest PR commit provides evidence for both Maven commands on Java 21.
+## Two transaction boundaries, two different counts
+
+| Operation | Transactions | Failure | Committed count |
+| --- | --- | --- | --- |
+| `service.insertTwice(key)` | One transaction contains both INSERTs | Second INSERT throws `DuplicatePurchase`; the exception escapes | **0** |
+| `service.register(id1, key, title)`, then a second registration | One transaction per external service call | First call commits; second call rolls back | **1** |
+
+The repository never deletes the first row to hide a duplicate. No test class or method uses a transactional test wrapper. The two key tests query the result through an independent autocommit JDBC connection after the service returns or throws.
+
+## Verification
+
+```sh
+mvn -q verify
+```
+
+Use `mvn verify` to display the full test summary and `BUILD SUCCESS`.
+
+| Test | Evidence |
+| --- | --- |
+| `PurchasePolicyTest` | Four README rows plus other forbidden transitions and null statuses |
+| `PurchaseIdTest` / `PurchaseKeyTest` | UUID identity and rejected null/blank identifiers |
+| `PurchaseServicePortTest` | Mocked outbound repository; no database or HTTP calls |
+| `PurchaseServiceTest` | Spring injects the rule chain and preserves Lab 2 behavior |
+| `PurchaseJdbcIntegrationTest.secondStatementRollsBack` | Duplicate domain exception, SQLSTATE 23505, committed count 0 |
+| `PurchaseJdbcIntegrationTest.secondRequestKeepsTheFirst` | First row commits, second call fails, count 1, original data unchanged |
+| Remaining JDBC / mapper tests | PostgreSQL CHECK and NOT NULL, all statuses round-trip, unknown values rejected, quoted inputs remain data |
+
+GitHub Actions uses Java 21 and real PostgreSQL. It checks domain boundaries, executes the psql rollback demonstration, runs `mvn -q verify`, and starts the Java demonstration. Test reports and demo logs are saved in the `lab3-verification` workflow artifact.
+
+## Hand-in
+
+| Lab | Branch | Pull request |
+| --- | --- | --- |
+| Lab 2 — Spring Boot and domain rules | [lab-2](https://github.com/argymakmyrzaliyev-star/purchase-tracker/tree/lab-2) | [PR #1](https://github.com/argymakmyrzaliyev-star/purchase-tracker/pull/1) |
+| Lab 3 — PostgreSQL, JDBC and transactions | [lab-3](https://github.com/argymakmyrzaliyev-star/purchase-tracker/tree/lab-3) | [PR #2](https://github.com/argymakmyrzaliyev-star/purchase-tracker/pull/2) |
+
+Lab 2 contains the Spring Boot version without database persistence. Lab 3 continues that product with PostgreSQL and JDBC. Its PR compares against `lab-2`; after Lab 2 is merged, the Lab 3 PR can target `main`.
+
+The Lab 3 PR title must include the actual Jira story key supplied by the team. The course number is not evidence of a Jira story.
+

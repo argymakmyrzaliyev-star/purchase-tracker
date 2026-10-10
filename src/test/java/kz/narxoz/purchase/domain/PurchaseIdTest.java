@@ -5,19 +5,31 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class PurchaseIdTest {
     @Test
-    void keepsAValidId() {
-        assertEquals("PUR-001", new PurchaseId("PUR-001").value());
+    void keepsAValidUuid() {
+        UUID value = UUID.randomUUID();
+        assertEquals(value, PurchaseId.parse(value.toString()).value());
+    }
+
+    @Test
+    void generatesSeparateSurrogateIds() {
+        assertNotEquals(PurchaseId.newId(), PurchaseId.newId());
+    }
+
+    @Test
+    void rejectsNullUuid() {
+        assertThrows(IllegalArgumentException.class, () -> new PurchaseId(null));
     }
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" ", "   ", "\t", "\n", " \t\n "})
-    void rejectsNullOrBlankIds(String value) {
-        assertThrows(IllegalArgumentException.class, () -> new PurchaseId(value));
+    @ValueSource(strings = {" ", "   ", "\t", "\n", " \t\n ", "PR-19", "not-a-uuid"})
+    void rejectsMissingOrInvalidIds(String value) {
+        assertThrows(IllegalArgumentException.class, () -> PurchaseId.parse(value));
     }
 }
