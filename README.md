@@ -14,7 +14,7 @@ Purchase requests move from drafting through approval to ordering. This is the s
 For a new checkout:
 
 ```sh
-git clone --branch CSS-3008-lab3-jdbc https://github.com/argymakmyrzaliyev-star/purchase-tracker.git
+git clone --branch lab-3 https://github.com/argymakmyrzaliyev-star/purchase-tracker.git
 cd purchase-tracker
 docker compose up -d --wait
 mvn -q verify
@@ -145,8 +145,12 @@ GitHub Actions uses Java 21 and real PostgreSQL. It checks domain boundaries, ex
 
 ## Hand-in
 
-Lab 2 remains in [PR #1](https://github.com/argymakmyrzaliyev-star/purchase-tracker/pull/1). Lab 3 is developed on `CSS-3008-lab3-jdbc` based on the Lab 2 branch, so the labs can be reviewed separately. After Lab 2 is merged, the Lab 3 PR can target `main`.
+| Lab | Branch | Pull request |
+| --- | --- | --- |
+| Lab 2 — Spring Boot and domain rules | [lab-2](https://github.com/argymakmyrzaliyev-star/purchase-tracker/tree/lab-2) | [PR #1](https://github.com/argymakmyrzaliyev-star/purchase-tracker/pull/1) |
+| Lab 3 — PostgreSQL, JDBC and transactions | [lab-3](https://github.com/argymakmyrzaliyev-star/purchase-tracker/tree/lab-3) | [PR #2](https://github.com/argymakmyrzaliyev-star/purchase-tracker/pull/2) |
+
+Lab 2 contains the Spring Boot version without database persistence. Lab 3 continues that product with PostgreSQL and JDBC. Its PR compares against `lab-2`; after Lab 2 is merged, the Lab 3 PR can target `main`.
 
 The Lab 3 PR title must include the actual Jira story key supplied by the team. The course number is not evidence of a Jira story.
 
-For a step-by-step Russian demonstration guide, see [docs/DEFENSE_RU.md](docs/DEFENSE_RU.md).
