@@ -16,7 +16,9 @@ mvn -q verify
 mvn spring-boot:run
 ```
 
-The application starts without opening a web server. This lab has no REST API, database, or Docker setup. Stop the process with `Ctrl+C`.
+The application starts without opening a web server. A successful launch prints `Started Application`; the process then exits normally because this lab has no web server or background work. No REST API, database, or Docker setup is included.
+
+GitHub Actions runs `mvn -q verify` and then launches the application separately with `mvn -B --no-transfer-progress spring-boot:run`. The startup check requires both a successful exit and the `Started Application in` log message.
 
 ## Package boundaries
 
@@ -31,7 +33,7 @@ flowchart TB
   config --> domain
 ```
 
-`dto`, `client`, and `handler` are reserved for later integration work where noted; no HTTP client or REST endpoint is implemented in this lab. The rule types and policy are plain Java and contain no `org.springframework` imports.
+`dto` and `client` are placeholders for later integration work. `handler` contains `PurchaseService`; no HTTP client or REST endpoint is implemented in this lab. The rule types and policy are plain Java and contain no `org.springframework` imports.
 
 ## Purchase status rules
 
@@ -46,16 +48,16 @@ flowchart TB
 
 ## Pull request
 
-Use the Jira story ID supplied by your team in the PR title, for example `CSS-18 join Spring Boot to Purchase Tracker`. Do not guess or invent a story ID.
+Lab 2 is submitted through [pull request #1](https://github.com/argymakmyrzaliyev-star/purchase-tracker/pull/1) from `CSS-3008-join-spring-boot` into `main`. The title must contain the exact Jira story key supplied by the team.
 
 Paste this checklist into the PR body:
 
-- [x] Story IDs are in the title
-- [x] Same product as Lab 1
-- [x] `domain` has no `org.springframework` import
-- [x] Two types implement `Rule`
-- [x] `mvn -q verify` is green
-- [x] `mvn spring-boot:run` starts
-- [x] No secrets, `.env`, or `target/` committed
+- [ ] Story IDs are in the title
+- [ ] Same product as Lab 1
+- [ ] `domain` has no `org.springframework` import
+- [ ] Two types implement `Rule`
+- [ ] `mvn -q verify` is green
+- [ ] `mvn spring-boot:run` starts
+- [ ] No secrets, `.env`, or `target/` committed
 
-Before opening the PR, run both commands above on JDK 21 and check off the two local-run items.
+Mark the checklist items in the PR body after verifying them. The GitHub Actions run for the latest PR commit provides evidence for both Maven commands on Java 21.
