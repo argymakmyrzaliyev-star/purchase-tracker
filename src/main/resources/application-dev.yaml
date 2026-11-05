@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/css
+    username: css
+    password: css
+  flyway:
+    # Lab 3 created the same table with schema.sql before Flyway was introduced.
+    baseline-on-migrate: true
+
+app:
+  downstream:
+    base-url: http://localhost:9090
+    timeout: 2s

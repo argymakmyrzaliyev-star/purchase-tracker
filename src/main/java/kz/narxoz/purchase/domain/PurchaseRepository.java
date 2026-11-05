@@ -9,4 +9,6 @@ public interface PurchaseRepository {
     long count(PurchaseKey businessKey);
 
     Optional<PurchaseRequest> find(PurchaseKey businessKey);
+
+    Optional<PurchaseRequest> findById(PurchaseId id);
 }

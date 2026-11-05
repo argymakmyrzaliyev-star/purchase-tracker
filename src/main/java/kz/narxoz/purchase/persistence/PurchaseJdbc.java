@@ -7,6 +7,7 @@ import kz.narxoz.purchase.domain.PurchaseRepository;
 import kz.narxoz.purchase.domain.PurchaseRequest;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,6 +16,12 @@ import java.util.UUID;
 
 @Repository
 public class PurchaseJdbc implements PurchaseRepository {
+    private static final RowMapper<PurchaseRequest> PURCHASE_ROW = (rs, rowNum) -> new PurchaseRequest(
+            new PurchaseId(rs.getObject("id", UUID.class)),
+            new PurchaseKey(rs.getString("business_key")),
+            PurchaseStatusMapper.fromDatabase(rs.getString("status")),
+            rs.getString("title"));
+
     private final JdbcTemplate jdbc;
 
     public PurchaseJdbc(JdbcTemplate jdbc) {
@@ -49,11 +56,16 @@ public class PurchaseJdbc implements PurchaseRepository {
         List<PurchaseRequest> purchases = jdbc.query("""
                 SELECT id, business_key, status, title
                 FROM purchase_request WHERE business_key = ?
-                """, (rs, rowNum) -> new PurchaseRequest(
-                new PurchaseId(rs.getObject("id", UUID.class)),
-                new PurchaseKey(rs.getString("business_key")),
-                PurchaseStatusMapper.fromDatabase(rs.getString("status")),
-                rs.getString("title")), businessKey.value());
+                """, PURCHASE_ROW, businessKey.value());
+        return purchases.stream().findFirst();
+    }
+
+    @Override
+    public Optional<PurchaseRequest> findById(PurchaseId id) {
+        List<PurchaseRequest> purchases = jdbc.query("""
+                SELECT id, business_key, status, title
+                FROM purchase_request WHERE id = ?
+                """, PURCHASE_ROW, id.value());
         return purchases.stream().findFirst();
     }
 }

@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** No test transaction: counts are observed after the service has committed/rolled back. */
 @SpringBootTest(classes = Application.class)
-@ActiveProfiles("test")
+@ActiveProfiles({"dev", "test"})
 class PurchaseJdbcIntegrationTest {
     @Autowired
     private PurchaseService service;
@@ -45,7 +45,7 @@ class PurchaseJdbcIntegrationTest {
         assertEquals("purchase_tracker_lab3_test",
                 jdbc.queryForObject("SELECT current_schema()", String.class));
         jdbc.execute("DROP TABLE IF EXISTS purchase_tracker_lab3_test.purchase_request");
-        jdbc.execute(Files.readString(Path.of("src/main/resources/db/schema.sql")));
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V1__purchase_request.sql")));
     }
 
     @Test
@@ -71,6 +71,7 @@ class PurchaseJdbcIntegrationTest {
         assertEquals(1, countCommitted("PR-19"));
         assertEquals(1, service.count("PR-19"));
         assertEquals(first, service.find("PR-19").orElseThrow());
+        assertEquals(first, service.require(first.id()));
     }
 
     @ParameterizedTest

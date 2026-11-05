@@ -1,5 +1,6 @@
 package kz.narxoz.purchase.handler;
 
+import kz.narxoz.purchase.domain.MissingPurchase;
 import kz.narxoz.purchase.domain.PurchaseId;
 import kz.narxoz.purchase.domain.PurchaseKey;
 import kz.narxoz.purchase.domain.PurchasePolicy;
@@ -53,5 +54,10 @@ public class PurchaseService {
     @Transactional(readOnly = true)
     public Optional<PurchaseRequest> find(String businessKey) {
         return purchases.find(new PurchaseKey(businessKey));
+    }
+
+    @Transactional(readOnly = true)
+    public PurchaseRequest require(PurchaseId id) {
+        return purchases.findById(id).orElseThrow(() -> new MissingPurchase(id));
     }
 }

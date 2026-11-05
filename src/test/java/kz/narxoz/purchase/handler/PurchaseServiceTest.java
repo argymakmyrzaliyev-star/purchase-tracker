@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest(classes = Application.class)
-@ActiveProfiles("test")
+@ActiveProfiles({"dev", "test"})
 class PurchaseServiceTest {
     @Autowired
     private PurchaseService service;
