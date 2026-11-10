@@ -1,0 +1,11 @@
+# Synthetic settings that require review; no production data.
+permitrootlogin yes
+passwordauthentication yes
+permitemptypasswords no
+pubkeyauthentication yes
+hostbasedauthentication no
+ignorerhosts yes
+strictmodes yes
+x11forwarding yes
+maxauthtries 6
+logingracetime 120
