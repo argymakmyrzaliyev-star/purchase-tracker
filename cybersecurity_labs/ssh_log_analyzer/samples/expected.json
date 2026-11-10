@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "purpose": "triage candidates, not proof of compromise",
+  "parameters": {
+    "failure_threshold": 5,
+    "window_seconds": 300
+  },
+  "counts": {
+    "lines": 8,
+    "parsed": 7,
+    "ignored": 1,
+    "malformed": 0,
+    "failed": 5,
+    "accepted": 2
+  },
+  "alerts": [
+    {
+      "type": "failure_burst",
+      "host": "lab-server",
+      "source_ip": "192.0.2.10",
+      "window_start": "2026-11-10T09:00:00+00:00",
+      "threshold_reached_at": "2026-11-10T09:00:40+00:00",
+      "failures_at_threshold": 5,
+      "line": 5
+    },
+    {
+      "type": "success_after_failures",
+      "host": "lab-server",
+      "source_ip": "192.0.2.10",
+      "user": "guest",
+      "time": "2026-11-10T09:01:00+00:00",
+      "failures_in_window": 5,
+      "line": 6
+    }
+  ]
+}
