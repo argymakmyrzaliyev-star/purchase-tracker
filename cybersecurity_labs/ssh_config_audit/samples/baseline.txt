@@ -1,0 +1,11 @@
+# Synthetic effective configuration snapshot for the learning profile.
+permitrootlogin no
+passwordauthentication no
+permitemptypasswords no
+pubkeyauthentication yes
+hostbasedauthentication no
+ignorerhosts yes
+strictmodes yes
+x11forwarding no
+maxauthtries 3
+logingracetime 30

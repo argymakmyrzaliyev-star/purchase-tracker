@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "profile": "learning-key-based-admin-v1",
+  "scope": "Provided effective snapshot and connection context only",
+  "verdict": "review_required",
+  "counts": {
+    "pass": 5,
+    "review": 5,
+    "unknown": 0
+  },
+  "findings": [
+    {
+      "setting": "permitrootlogin",
+      "observed": "yes",
+      "expected": "no",
+      "status": "review",
+      "reason": "Use named administrative accounts."
+    },
+    {
+      "setting": "passwordauthentication",
+      "observed": "yes",
+      "expected": "no",
+      "status": "review",
+      "reason": "This profile uses public-key authentication."
+    },
+    {
+      "setting": "permitemptypasswords",
+      "observed": "no",
+      "expected": "no",
+      "status": "pass",
+      "reason": "Do not allow empty passwords."
+    },
+    {
+      "setting": "pubkeyauthentication",
+      "observed": "yes",
+      "expected": "yes",
+      "status": "pass",
+      "reason": "Public keys are required by this profile."
+    },
+    {
+      "setting": "hostbasedauthentication",
+      "observed": "no",
+      "expected": "no",
+      "status": "pass",
+      "reason": "This profile does not use host-based trust."
+    },
+    {
+      "setting": "ignorerhosts",
+      "observed": "yes",
+      "expected": "yes",
+      "status": "pass",
+      "reason": "Ignore legacy per-user host trust files."
+    },
+    {
+      "setting": "strictmodes",
+      "observed": "yes",
+      "expected": "yes",
+      "status": "pass",
+      "reason": "Check relevant file ownership and permissions."
+    },
+    {
+      "setting": "x11forwarding",
+      "observed": "yes",
+      "expected": "no",
+      "status": "review",
+      "reason": "This profile does not require remote graphical applications."
+    },
+    {
+      "setting": "maxauthtries",
+      "observed": "6",
+      "expected": "1..4",
+      "status": "review",
+      "reason": "Limit authentication attempts per connection."
+    },
+    {
+      "setting": "logingracetime",
+      "observed": "120",
+      "expected": "1..60 seconds",
+      "status": "review",
+      "reason": "Limit time spent waiting for authentication."
+    }
+  ],
+  "limitations": [
+    "Not a vulnerability scan or compliance certification.",
+    "A snapshot cannot prove what the running daemon currently uses.",
+    "AuthenticationMethods, PAM, MFA and other contexts require separate review."
+  ]
+}

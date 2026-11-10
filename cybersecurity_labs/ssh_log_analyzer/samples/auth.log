@@ -1,0 +1,8 @@
+2026-11-10T09:00:00Z lab-server sshd[1200]: Failed password for invalid user guest from 192.0.2.10 port 41100 ssh2
+2026-11-10T09:00:10Z lab-server sshd[1201]: Failed password for invalid user guest from 192.0.2.10 port 41101 ssh2
+2026-11-10T09:00:20Z lab-server sshd[1202]: Failed password for invalid user guest from 192.0.2.10 port 41102 ssh2
+2026-11-10T09:00:30Z lab-server sshd[1203]: Failed password for invalid user guest from 192.0.2.10 port 41103 ssh2
+2026-11-10T09:00:40Z lab-server sshd[1204]: Failed password for invalid user guest from 192.0.2.10 port 41104 ssh2
+2026-11-10T09:01:00Z lab-server sshd[1205]: Accepted password for guest from 192.0.2.10 port 41105 ssh2
+2026-11-10T09:05:00Z lab-server sshd[1300]: Accepted publickey for student from 2001:db8::20 port 50100 ssh2: ED25519 SHA256:DEMO
+2026-11-10T09:06:00Z lab-server cron[100]: synthetic unrelated message
