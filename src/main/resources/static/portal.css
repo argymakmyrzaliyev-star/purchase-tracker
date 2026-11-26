@@ -1,0 +1,30 @@
+:root { color-scheme:light; font:16px/1.5 "Inter",Arial,sans-serif; color:#192c27; background:#f1f3ed; }
+* { box-sizing:border-box; }
+body { margin:0; }
+header { display:flex; align-items:center; gap:.7rem; background:#173e35; color:#fff; padding:1rem max(5vw,calc((100vw - 990px)/2)); }
+.mark { display:grid; place-items:center; background:#c7e99a; color:#19392e; width:2.1rem; height:2.1rem; font:bold 1.4rem Georgia,serif; border-radius:.35rem; }
+.session { margin-left:auto; font-size:.88rem; }
+main { max-width:1040px; padding:2rem 25px 4rem; margin:auto; }
+h1 { font:normal clamp(2.4rem,5vw,4rem)/1.12 Georgia,serif; letter-spacing:-.045em; margin:1rem 0 2rem; }
+.grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); gap:1rem; align-items:start; }
+section { background:#fff; border:1px solid #cbd3c7; border-radius:.65rem; padding:1.5rem; }
+h2 { font-size:1.2rem; margin:0 0 1.2rem; }
+form, .lookup { display:grid; gap:.9rem; }
+label, summary { font-size:.9rem; font-weight:600; }
+input { display:block; width:100%; border:1px solid #9caba2; border-radius:.35rem; font:inherit; padding:.55rem .7rem; margin-top:.25rem; }
+button { justify-self:start; border:1px solid #174f40; background:#174f40; color:white; border-radius:.35rem; padding:.55rem 1rem; font:inherit; font-weight:600; font-size:.93rem; cursor:pointer; }
+button.secondary { background:white; color:#174f40; }
+button:hover { filter:brightness(.92); }
+:focus-visible { outline:3px solid #b07414; outline-offset:2px; }
+details,.lookup { border-top:1px solid #d8dfd5; margin-top:1.3rem; padding-top:1rem; }
+summary { cursor:pointer; }
+dl { margin:.65rem 0 0; }
+dt { font:600 .75rem/1.7 monospace; color:#46685a; }
+dd { margin:0 0 .4rem; font:.88rem/1.4 monospace; }
+.lookup { gap:.2rem; }
+.actions { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.8rem; }
+.result { margin-top:1rem; border-left:4px solid #488367; }
+.result h2 { margin-bottom:.5rem; }
+#result { overflow-wrap:anywhere; white-space:pre-line; font:.92rem/1.6 ui-monospace,monospace; }
+[hidden] { display:none !important; }
+@media (max-width:680px) { .grid { grid-template-columns:1fr; } main { padding:1rem; } section { padding:1.1rem; } }

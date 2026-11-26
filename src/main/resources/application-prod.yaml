@@ -5,6 +5,8 @@ spring:
     password: ${CSS_DB_PASSWORD}
 
 app:
+  jwt:
+    secret: ${CSS_JWT_SECRET}
   downstream:
     base-url: ${CSS_DOWNSTREAM_BASE_URL:https://purchase-downstream.invalid}
     timeout: ${CSS_DOWNSTREAM_TIMEOUT:2s}

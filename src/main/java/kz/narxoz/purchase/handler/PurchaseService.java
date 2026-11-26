@@ -1,5 +1,9 @@
 package kz.narxoz.purchase.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
+import kz.narxoz.purchase.domain.InvalidTransition;
 import kz.narxoz.purchase.domain.MissingPurchase;
 import kz.narxoz.purchase.domain.PurchaseId;
 import kz.narxoz.purchase.domain.PurchaseKey;
@@ -16,6 +20,7 @@ import java.util.Optional;
 /** Spring manages transaction boundaries; the domain decides status rules. */
 @Service
 public class PurchaseService {
+    private static final Logger LOG = LoggerFactory.getLogger(PurchaseService.class);
     private final PurchasePolicy policy;
     private final PurchaseRepository purchases;
 
@@ -34,6 +39,18 @@ public class PurchaseService {
                 PurchaseStatus.DRAFT, title);
         purchases.insert(purchase);
         return purchase;
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('APPROVER')")
+    public PurchaseRequest approve(PurchaseId id, String actor) {
+        PurchaseRequest current = require(id);
+        PurchaseStatus next = policy.move(current.status(), PurchaseStatus.APPROVED);
+        if (!purchases.updateStatus(id, current.status(), next)) {
+            throw new InvalidTransition("Purchase changed during approval");
+        }
+        LOG.info("Purchase {} approved by {}", id.value(), actor);
+        return new PurchaseRequest(id, current.businessKey(), next, current.title());
     }
 
     @Transactional

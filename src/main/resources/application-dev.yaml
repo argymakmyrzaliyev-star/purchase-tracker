@@ -8,6 +8,8 @@ spring:
     baseline-on-migrate: true
 
 app:
+  jwt:
+    secret: classroom-purchase-tracker-dev-only-change-this-key
   downstream:
     base-url: http://localhost:9090
     timeout: 2s
