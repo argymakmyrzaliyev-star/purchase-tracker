@@ -34,6 +34,27 @@ class DevProfileTest {
     @Autowired
     private MockMvc mvc;
 
+    @org.springframework.beans.factory.annotation.Value("${CSS_REQUESTER_PASSWORD}")
+    private String requesterPassword;
+
+    @Test
+    void realLoginLogoutRejectsReplayedToken() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        String body = mapper.writeValueAsString(java.util.Map.of(
+                "username", "requester", "password", requesterPassword));
+        var login = mvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn();
+        String token = mapper.readTree(login.getResponse().getContentAsString()).get("accessToken").asText();
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.username").value("requester"));
+        mvc.perform(post("/api/v1/auth/logout").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/me").header("Authorization", "Bearer broken.token.value"))
+                .andExpect(status().isUnauthorized());
+    }
+
     @Test
     void bindsDownstreamConfigurationWithoutCallingIt() {
         assertEquals(URI.create("http://localhost:9090"), downstream.baseUrl());

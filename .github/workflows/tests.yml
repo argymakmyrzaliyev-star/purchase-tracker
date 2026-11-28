@@ -27,6 +27,7 @@ jobs:
           --health-retries 20
     env:
       PGPASSWORD: css
+      CSS_DB_PASSWORD: css
     steps:
       - uses: actions/checkout@v4
       - name: Set up Java 21
@@ -35,6 +36,13 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Generate ephemeral classroom secrets
+        run: |
+          for key in CSS_JWT_SECRET CSS_REQUESTER_PASSWORD CSS_APPROVER_PASSWORD; do
+            value=$(openssl rand -hex 32)
+            echo "::add-mask::$value"
+            echo "$key=$value" >> "$GITHUB_ENV"
+          done
       - name: Check domain boundaries
         run: |
           if grep -R -nE 'java\.sql|javax\.sql|org\.springframework' src/main/java/kz/narxoz/purchase/domain; then

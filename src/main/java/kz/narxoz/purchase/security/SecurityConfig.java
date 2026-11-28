@@ -38,12 +38,19 @@ public class SecurityConfig {
         var converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(roles);
         return http.csrf(csrf -> csrf.disable())
+                .formLogin(f -> f.disable()).httpBasic(b -> b.disable()).logout(l -> l.disable())
+                .headers(h -> h.contentSecurityPolicy(c -> c.policyDirectives(
+                        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+                        + "connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"))
+                        .referrerPolicy(r -> r.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
+                .addFilterBefore(new LoginRateLimitFilter(json), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(r -> r
                         .requestMatchers(POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(GET, "/", "/index.html", "/portal.css", "/portal.js",
                                 "/actuator/health", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(POST, PURCHASES + "/*/approve").hasRole("APPROVER")
+                        .requestMatchers(POST, "/api/v1/auth/logout").authenticated()
                         .requestMatchers(POST, PURCHASES).hasAnyRole("REQUESTER", "APPROVER")
                         .requestMatchers(GET, PURCHASES + "/*", "/api/me").hasAnyRole("REQUESTER", "APPROVER")
                         .anyRequest().denyAll())

@@ -6,7 +6,7 @@ import java.util.UUID;
 public record ApiError(String code, String message, String correlationId) {
     public static String correlationId(HttpServletRequest request) {
         String id = request.getHeader("X-Correlation-Id");
-        return id == null || id.isBlank() ? UUID.randomUUID().toString() : id;
+        return id == null || !id.matches("[A-Za-z0-9_-]{1,64}") ? UUID.randomUUID().toString() : id;
     }
 
     public static ApiError forRequest(String code, String message, HttpServletRequest request) {

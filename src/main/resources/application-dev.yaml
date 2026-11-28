@@ -2,14 +2,17 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/css
     username: css
-    password: css
+    password: ${CSS_DB_PASSWORD}
   flyway:
     # Lab 3 created the same table with schema.sql before Flyway was introduced.
     baseline-on-migrate: true
 
 app:
   jwt:
-    secret: classroom-purchase-tracker-dev-only-change-this-key
+    secret: ${CSS_JWT_SECRET}
   downstream:
     base-url: http://localhost:9090
     timeout: 2s
+
+server:
+  address: 127.0.0.1

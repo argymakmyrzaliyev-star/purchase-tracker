@@ -14,18 +14,45 @@ Purchase requests move from drafting through approval to ordering. Lab 5 adds a 
 On the Lab 5 branch, start the classroom database or use your local PostgreSQL instance.
 
 ```sh
-docker compose up -d --wait
-mvn -q verify
-mvn spring-boot:run
+powershell -ExecutionPolicy Bypass -File .\scripts\start-demo.ps1 -Verify
 ```
 
 Open the [request desk](http://localhost:8080/) to sign in. The same server hosts [Swagger UI](http://localhost:8080/swagger-ui.html), [OpenAPI JSON](http://localhost:8080/v3/api-docs), or [health](http://localhost:8080/actuator/health). The server stays running until you stop it. Stop the Compose database with `docker compose stop`. The named volume retains its data.
+
+## Local security and startup
+
+The Windows launcher uses the existing `purchase-tracker-demo-db` container on
+127.0.0.1:15432. It preserves purchases, rotates the local database password, and
+generates new random passwords and a signing key on each run. Stop the previous
+application before running it. The dev web server binds to 127.0.0.1 only.
+Passwords appear only in the local terminal, never on the web page. Do not record
+or share that terminal while demonstrating. Close the launcher when finished.
+For another port, pass `-DatabasePort 15433`; an existing container must already
+have that exact loopback-only mapping.
+
+For a manual launch on any OS, set `CSS_JWT_SECRET` (32+ random characters),
+`CSS_REQUESTER_PASSWORD` and `CSS_APPROVER_PASSWORD` (distinct, 16+ characters),
+`CSS_DB_PASSWORD`, and your datasource connection variables before `mvn spring-boot:run`.
+These values have no built-in fallback. Keep production keys out of git.
+Run `mvn verify` in the same configured environment to check all tests.
+
+Login is limited to ten attempts per direct client address per minute. Logout
+revokes the current token; the page only confirms logout after the server responds.
+Revocations are in process memory: a multi-instance deployment needs a shared
+revocation store, and reusing a signing key after restarting loses revocations.
+The supplied launcher rotates the key on each start, invalidating prior tokens.
+The two roles still read any request by UUID, as required by this lab; there is
+no per-owner isolation. Non-dev login intentionally rejects all credentials until
+a real identity provider is implemented. This is a local classroom demo, not a
+production deployment. External access requires HTTPS and deployment-specific
+identity, secret management, rate limiting, and database permissions.
 
 ## Access rules
 
 | Request or action | REQUESTER | APPROVER | No token |
 | --- | --- | --- | --- |
-| POST `/api/v1/auth/login` | Public | Public | Public |
+| POST `/api/v1/auth/login` | Public (rate limited) | Public (rate limited) | Public (rate limited) |
+| POST `/api/v1/auth/logout` | Revoke own token | Revoke own token | 401 |
 | POST `/api/v1/purchase-requests` | Create | Create | 401 |
 | GET `/api/v1/purchase-requests/{id}` | Read | Read | 401 |
 | POST `/api/v1/purchase-requests/{id}/approve` | 403 | Approve a draft | 401 |
@@ -36,9 +63,9 @@ Open the [request desk](http://localhost:8080/) to sign in. The same server host
 ### Try both roles in your browser
 
 1. At the request desk, submit a wrong password to see `401 UNAUTHENTICATED`.
-2. Sign in with the dev-only account `requester` / `requester-dev`. Create a draft with a fresh business key, then read it. The page fills in its UUID.
+2. Sign in with the dev-only account `requester` and the password printed by the local launcher. Create a draft with a fresh business key, then read it. The page fills in its UUID.
 3. Click **Approve request**. The API returns `403 FORBIDDEN`; the desk reads the row again so you can compare the two statuses.
-4. Sign out and sign in as `approver` / `approver-dev`. Approve the same UUID. It changes from `DRAFT` to `APPROVED`. A second approval returns `409 INVALID_TRANSITION`.
+4. Sign out and sign in as `approver` and its separate launcher password. Approve the same UUID. It changes from `DRAFT` to `APPROVED`. A second approval returns `409 INVALID_TRANSITION`.
 5. Sign out again and read the request. The API returns `401`. The UUID stays visible so both accounts can demonstrate the same purchase.
 
 Login uses BCrypt and issues an HS256 bearer token with issuer `purchase-tracker`, subject, issue and expiry timestamps, and an unprefixed `roles` array. The page uses `GET /api/me` to show the caller. It keeps the token in memory for 900 seconds. Both the HTTP rule and the service method restrict approval to the approver role. The actor comes from the authenticated principal.
@@ -63,7 +90,7 @@ Errors contain only `code`, `message`, and `correlationId`. Supply `X-Correlatio
 
 ## Profiles and database
 
-The default `dev` profile uses PostgreSQL at `localhost:5432/css` with the classroom credentials `css` / `css`. It configures the downstream client for `http://localhost:9090` with a 2-second timeout. This lab does not send downstream requests.
+The bare `dev` datasource defaults to localhost:5432 and user css, with its password required from `CSS_DB_PASSWORD`; the launcher overrides the port to 15432 and supplies a fresh database password. It configures the downstream client for `http://localhost:9090` with a 2-second timeout. This lab does not send downstream requests.
 
 Set `SPRING_PROFILES_ACTIVE=prod`, `CSS_DB_URL`, `CSS_DB_USER`, `CSS_DB_PASSWORD`, and `CSS_JWT_SECRET` for production. Use a randomly generated signing secret of at least 32 characters. Only the dev profile provisions the two classroom accounts. The downstream URL uses a reserved placeholder until configured via `CSS_DOWNSTREAM_BASE_URL`. Set `CSS_DOWNSTREAM_TIMEOUT` to override the 2-second default.
 

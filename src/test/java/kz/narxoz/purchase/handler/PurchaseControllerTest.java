@@ -60,6 +60,8 @@ class PurchaseControllerTest {
     @MockitoBean
     private JwtDecoder decoder;
     @MockitoBean
+    private kz.narxoz.purchase.security.TokenRevocations revocations;
+    @MockitoBean
     private AuthenticationManager login;
     @MockitoBean
     private TokenService tokens;

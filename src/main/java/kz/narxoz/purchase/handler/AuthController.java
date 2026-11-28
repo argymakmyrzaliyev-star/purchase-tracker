@@ -9,15 +9,21 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
+import kz.narxoz.purchase.security.TokenRevocations;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 public class AuthController {
     private final AuthenticationManager login;
     private final TokenService tokens;
+    private final TokenRevocations revocations;
 
-    public AuthController(AuthenticationManager login, TokenService tokens) {
+    public AuthController(AuthenticationManager login, TokenService tokens, TokenRevocations revocations) {
         this.login = login;
         this.tokens = tokens;
+        this.revocations = revocations;
     }
 
     record LoginRequest(@NotBlank String username, @NotBlank String password) {}
@@ -31,6 +37,14 @@ public class AuthController {
     TokenResponse login(@Valid @RequestBody LoginRequest body) {
         var credentials = UsernamePasswordAuthenticationToken.unauthenticated(body.username(), body.password());
         return new TokenResponse(tokens.issue(login.authenticate(credentials)), "Bearer", TokenService.LIFETIME_SECONDS);
+    }
+
+    @PostMapping("/api/v1/auth/logout")
+    @ApiResponse(responseCode = "200", description = "Current token revoked")
+    @ApiResponse(responseCode = "401", description = "Valid token required")
+    Map<String, String> logout(@AuthenticationPrincipal Jwt jwt) {
+        revocations.revoke(jwt);
+        return Map.of("message", "signed out");
     }
 
     @GetMapping("/api/me")

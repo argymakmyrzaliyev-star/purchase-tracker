@@ -99,6 +99,8 @@ bind("approve", "click", async () => {
 });
 
 bind("logout", "click", async () => {
+  const reply = await call("/api/v1/auth/logout", "POST");
+  if (!reply.ok) return display(reply, "Server logout failed; retry before closing the page.");
   clearSession();
   display(await call("/api/me"), "Signed out.");
 });

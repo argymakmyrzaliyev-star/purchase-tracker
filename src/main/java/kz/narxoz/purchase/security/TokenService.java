@@ -23,7 +23,7 @@ public class TokenService {
         var roles = user.getAuthorities().stream().map(GrantedAuthority::getAuthority)
                 .filter(role -> role.startsWith("ROLE_")).map(role -> role.substring(5)).toList();
         var now = Instant.now();
-        var claims = JwtClaimsSet.builder().issuer(issuer).subject(user.getName()).issuedAt(now)
+        var claims = JwtClaimsSet.builder().issuer(issuer).subject(user.getName()).id(java.util.UUID.randomUUID().toString()).issuedAt(now)
                 .expiresAt(now.plusSeconds(LIFETIME_SECONDS)).claim("roles", roles).build();
         var header = JwsHeader.with(MacAlgorithm.HS256).build();
         return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();

@@ -29,12 +29,14 @@ public class JwtConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(SecretKey key, @Value("${spring.application.name}") String issuer) {
+    JwtDecoder jwtDecoder(SecretKey key, @Value("${spring.application.name}") String issuer, TokenRevocations revocations) {
         var decoder = NimbusJwtDecoder.withSecretKey(key)
                 .macAlgorithm(MacAlgorithm.HS256).build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 new JwtTimestampValidator(Duration.ZERO), new JwtIssuerValidator(issuer),
-                new JwtClaimValidator<>("exp", value -> value != null)));
+                new JwtClaimValidator<>("exp", value -> value != null),
+                jwt -> revocations.valid(jwt) ? OAuth2TokenValidatorResult.success()
+                        : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"))));
         return decoder;
     }
 }
