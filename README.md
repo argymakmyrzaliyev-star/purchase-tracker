@@ -1,6 +1,6 @@
-# Purchase Tracker — Lab 4
+# Purchase Tracker — Lab 5
 
-Purchase requests move from drafting through approval to ordering. Lab 4 adds a REST contract to the same semester product and PostgreSQL persistence from Labs 1–3.
+Purchase requests move from drafting through approval to ordering. Lab 5 adds a two-role approval workflow to the Lab 4 REST API. The request desk runs in the same Spring Boot process as the API.
 
 ## Requirements
 
@@ -11,15 +11,64 @@ Purchase requests move from drafting through approval to ordering. Lab 4 adds a 
 
 ## Quick start
 
-On the Lab 4 branch, start the classroom database or use your local PostgreSQL instance.
+On the Lab 5 branch, start the classroom database or use your local PostgreSQL instance.
 
 ```sh
-docker compose up -d --wait
-mvn -q verify
-mvn spring-boot:run
+powershell -ExecutionPolicy Bypass -File .\scripts\start-demo.ps1 -Verify
 ```
 
-Open [Swagger UI](http://localhost:8080/swagger-ui.html), [OpenAPI JSON](http://localhost:8080/v3/api-docs), or [health](http://localhost:8080/actuator/health). The server stays running until you stop it. Stop the Compose database with `docker compose stop`. The named volume retains its data.
+Open the [request desk](http://localhost:8080/) to sign in. The same server hosts [Swagger UI](http://localhost:8080/swagger-ui.html), [OpenAPI JSON](http://localhost:8080/v3/api-docs), or [health](http://localhost:8080/actuator/health). The server stays running until you stop it. Stop the Compose database with `docker compose stop`. The named volume retains its data.
+
+## Local security and startup
+
+The Windows launcher uses the existing `purchase-tracker-demo-db` container on
+127.0.0.1:15432. It preserves purchases, rotates the local database password, and
+generates new random passwords and a signing key on each run. Stop the previous
+application before running it. The dev web server binds to 127.0.0.1 only.
+Passwords appear only in the local terminal, never on the web page. Do not record
+or share that terminal while demonstrating. Close the launcher when finished.
+For another port, pass `-DatabasePort 15433`; an existing container must already
+have that exact loopback-only mapping.
+
+For a manual launch on any OS, set `CSS_JWT_SECRET` (32+ random characters),
+`CSS_REQUESTER_PASSWORD` and `CSS_APPROVER_PASSWORD` (distinct, 16+ characters),
+`CSS_DB_PASSWORD`, and your datasource connection variables before `mvn spring-boot:run`.
+These values have no built-in fallback. Keep production keys out of git.
+Run `mvn verify` in the same configured environment to check all tests.
+
+Login is limited to ten attempts per direct client address per minute. Logout
+revokes the current token; the page only confirms logout after the server responds.
+Revocations are in process memory: a multi-instance deployment needs a shared
+revocation store, and reusing a signing key after restarting loses revocations.
+The supplied launcher rotates the key on each start, invalidating prior tokens.
+The two roles still read any request by UUID, as required by this lab; there is
+no per-owner isolation. Non-dev login intentionally rejects all credentials until
+a real identity provider is implemented. This is a local classroom demo, not a
+production deployment. External access requires HTTPS and deployment-specific
+identity, secret management, rate limiting, and database permissions.
+
+## Access rules
+
+| Request or action | REQUESTER | APPROVER | No token |
+| --- | --- | --- | --- |
+| POST `/api/v1/auth/login` | Public (rate limited) | Public (rate limited) | Public (rate limited) |
+| POST `/api/v1/auth/logout` | Revoke own token | Revoke own token | 401 |
+| POST `/api/v1/purchase-requests` | Create | Create | 401 |
+| GET `/api/v1/purchase-requests/{id}` | Read | Read | 401 |
+| POST `/api/v1/purchase-requests/{id}/approve` | 403 | Approve a draft | 401 |
+| GET `/api/me` | Own identity | Own identity | 401 |
+| GET `/actuator/health`, Swagger UI, OpenAPI JSON and the request desk assets | Public | Public | Public |
+| Other routes | 403 | 403 | 401 |
+
+### Try both roles in your browser
+
+1. At the request desk, submit a wrong password to see `401 UNAUTHENTICATED`.
+2. Sign in with the dev-only account `requester` and the password printed by the local launcher. Create a draft with a fresh business key, then read it. The page fills in its UUID.
+3. Click **Approve request**. The API returns `403 FORBIDDEN`; the desk reads the row again so you can compare the two statuses.
+4. Sign out and sign in as `approver` and its separate launcher password. Approve the same UUID. It changes from `DRAFT` to `APPROVED`. A second approval returns `409 INVALID_TRANSITION`.
+5. Sign out again and read the request. The API returns `401`. The UUID stays visible so both accounts can demonstrate the same purchase.
+
+Login uses BCrypt and issues an HS256 bearer token with issuer `purchase-tracker`, subject, issue and expiry timestamps, and an unprefixed `roles` array. The page uses `GET /api/me` to show the caller. It keeps the token in memory for 900 seconds. Both the HTTP rule and the service method restrict approval to the approver role. The actor comes from the authenticated principal.
 
 ## REST contract
 
@@ -35,21 +84,15 @@ Open [Swagger UI](http://localhost:8080/swagger-ui.html), [OpenAPI JSON](http://
 
 POST accepts `businessKey` and `title`. A successful response contains `id`, `businessKey`, `status`, and `title`. New purchases start in `DRAFT`. Use the path in the `Location` header to read the created purchase.
 
-```sh
-curl -i http://localhost:8080/api/v1/purchase-requests \
-  -H 'Content-Type: application/json' \
-  -d '{"businessKey":"PR-LAB4-01","title":"Monitors for room 3"}'
-```
-
-Repeat the POST with the same business key to see `409`. In psql, `SELECT count(*) FROM purchase_request WHERE business_key = 'PR-LAB4-01';` returns 1. For a fresh demonstration, choose an unused business key.
+Use the signed-in request desk to create a second purchase with the same key. It returns `409 DUPLICATE`. The original row keeps its UUID and status.
 
 Errors contain only `code`, `message`, and `correlationId`. Supply `X-Correlation-Id` to correlate an error with your request. The server generates an ID if the header is missing or blank.
 
 ## Profiles and database
 
-The default `dev` profile uses PostgreSQL at `localhost:5432/css` with the classroom credentials `css` / `css`. It configures the downstream client for `http://localhost:9090` with a 2-second timeout. This lab does not send downstream requests.
+The bare `dev` datasource defaults to localhost:5432 and user css, with its password required from `CSS_DB_PASSWORD`; the launcher overrides the port to 15432 and supplies a fresh database password. It configures the downstream client for `http://localhost:9090` with a 2-second timeout. This lab does not send downstream requests.
 
-Set `SPRING_PROFILES_ACTIVE=prod`, `CSS_DB_URL`, `CSS_DB_USER`, and `CSS_DB_PASSWORD` for production. The downstream URL uses a reserved placeholder until configured via `CSS_DOWNSTREAM_BASE_URL`. Set `CSS_DOWNSTREAM_TIMEOUT` to override the 2-second default.
+Set `SPRING_PROFILES_ACTIVE=prod`, `CSS_DB_URL`, `CSS_DB_USER`, `CSS_DB_PASSWORD`, and `CSS_JWT_SECRET` for production. Use a randomly generated signing secret of at least 32 characters. Only the dev profile provisions the two classroom accounts. The downstream URL uses a reserved placeholder until configured via `CSS_DOWNSTREAM_BASE_URL`. Set `CSS_DOWNSTREAM_TIMEOUT` to override the 2-second default.
 
 Flyway applies V1 to a fresh database. V1 contains the original Lab 3 SQL byte for byte. The dev profile baselines an existing Lab 3 classroom schema at version 1 so its existing rows remain available. For an existing production schema, verify it matches V1 and explicitly baseline it at version 1 before starting the app.
 
@@ -157,7 +200,7 @@ Use `mvn verify` to display the full test summary and `BUILD SUCCESS`.
 | `PurchaseJdbcIntegrationTest.secondRequestKeepsTheFirst` | First row commits, second call fails, count 1, original data unchanged |
 | Remaining JDBC / mapper tests | PostgreSQL CHECK and NOT NULL, all statuses round-trip, unknown values rejected, quoted inputs remain data |
 
-GitHub Actions uses Java 21 and real PostgreSQL. It checks domain boundaries, executes the psql rollback demonstration, runs `mvn -q verify`, and starts the Java demonstration. Test reports and demo logs are saved in the `lab4-verification` workflow artifact.
+GitHub Actions uses Java 21 and real PostgreSQL. It checks domain boundaries, executes the psql rollback demonstration, runs `mvn -q verify`, and starts the Java demonstration. Test reports and demo logs are saved as workflow artifacts.
 
 ## Hand-in
 
@@ -168,21 +211,4 @@ GitHub Actions uses Java 21 and real PostgreSQL. It checks domain boundaries, ex
 
 Lab 2 contains the Spring Boot version without database persistence. Lab 3 continues that product with PostgreSQL and JDBC. Its PR compares against `lab-2`; after Lab 2 is merged, the Lab 3 PR can target `main`.
 
-Open the Lab 4 pull request from `lab-4` against the branch that contains Lab 3. Include the Lab 4 Jira story IDs in the title.
-
-
-### Lab 4 pull request checklist
-
-- [ ] Add the team's Lab 4 story IDs to the PR title.
-- [x] Keep Purchase Tracker and its PostgreSQL schema from Labs 1–3.
-- [x] Create and read purchase requests under `/api/v1/purchase-requests` using the UUID in the GET path.
-- [x] Return 201 with `Location`, 400 `VALIDATION` with the field name, 404 `NOT_FOUND`, and 409 `DUPLICATE`.
-- [x] Verify on a running app that the second POST returns 409 and PostgreSQL still holds exactly one row for the key.
-- [x] Return only `code`, `message`, and `correlationId` for API errors. Keep exception details in the server log.
-- [x] Return a response record and keep Spring and Jakarta Validation out of the domain.
-- [x] Publish 201, 400, and 409 for POST and 200 and 404 for GET in Swagger UI.
-- [x] Cover 201, 400, 404, 409, and the correlation header in `@WebMvcTest`.
-- [x] Read datasource and downstream settings from YAML. Use localhost `css` / `css` in dev and database environment variables in prod.
-- [x] Verify that health is 200 with `UP` and that env, beans, heapdump, and shutdown return 404.
-- [x] Run the Lab 3 tests and `mvn -q verify` against PostgreSQL.
-- [x] Keep Spring Security, an application Dockerfile, and `target/` out of this change.
+Lab 4 provides the API used here. The Lab 5 pull request compares `lab-5` against `lab-4`.

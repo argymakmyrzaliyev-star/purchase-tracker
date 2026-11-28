@@ -1,5 +1,6 @@
 package kz.narxoz.purchase.handler;
 
+import org.springframework.security.core.Authentication;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -48,6 +49,17 @@ public class PurchaseController {
         var purchase = purchases.register(PurchaseId.newId(), body.businessKey(), body.title());
         return ResponseEntity.created(URI.create(PATH + "/" + purchase.id().value()))
                 .body(PurchaseResponse.from(purchase));
+    }
+
+    @PostMapping("/{id}/approve")
+    @Operation(summary = "Approve a draft purchase request")
+    @ApiResponse(responseCode = "200", description = "Purchase approved")
+    @ApiResponse(responseCode = "401", description = "Valid token required")
+    @ApiResponse(responseCode = "403", description = "Approver role required")
+    @ApiResponse(responseCode = "404", description = "Unknown purchase")
+    @ApiResponse(responseCode = "409", description = "Purchase cannot be approved in its current status")
+    PurchaseResponse approve(@PathVariable UUID id, Authentication caller) {
+        return PurchaseResponse.from(purchases.approve(new PurchaseId(id), caller.getName()));
     }
 
     @InitBinder("id")

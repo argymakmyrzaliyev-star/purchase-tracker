@@ -1,5 +1,8 @@
 package kz.narxoz.purchase.handler;
 
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.access.AccessDeniedException;
+import kz.narxoz.purchase.domain.InvalidTransition;
 import jakarta.servlet.http.HttpServletRequest;
 import kz.narxoz.purchase.domain.DuplicatePurchase;
 import kz.narxoz.purchase.domain.MissingPurchase;
@@ -18,7 +21,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.util.UUID;
+import static kz.narxoz.purchase.handler.ApiError.correlationId;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 
@@ -79,6 +82,21 @@ public class ApiErrors {
                 "response is available as application/json", correlationId(request));
     }
 
+    @ExceptionHandler(AuthenticationException.class)
+    ResponseEntity<ApiError> badLogin(HttpServletRequest request) {
+        return error(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "bad username or password", correlationId(request));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ApiError> forbidden(HttpServletRequest request) {
+        return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "not allowed for your role", correlationId(request));
+    }
+
+    @ExceptionHandler(InvalidTransition.class)
+    ResponseEntity<ApiError> invalidTransition(IllegalStateException ex, HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "INVALID_TRANSITION", ex.getMessage(), correlationId(request));
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> unexpected(Exception ex, HttpServletRequest request) {
         String id = correlationId(request);
@@ -95,8 +113,4 @@ public class ApiErrors {
                 .body(new ApiError(code, message, id));
     }
 
-    private static String correlationId(HttpServletRequest request) {
-        String id = request.getHeader("X-Correlation-Id");
-        return id == null || id.isBlank() ? UUID.randomUUID().toString() : id;
-    }
 }

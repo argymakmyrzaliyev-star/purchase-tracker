@@ -11,7 +11,7 @@ public final class TransitionRule implements Rule {
         };
 
         if (!allowed) {
-            throw new IllegalStateException("Cannot move purchase from " + from + " to " + to);
+            throw new InvalidTransition("Cannot move purchase from " + from + " to " + to);
         }
     }
 }

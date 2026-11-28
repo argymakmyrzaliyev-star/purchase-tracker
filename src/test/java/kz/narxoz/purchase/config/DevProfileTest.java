@@ -13,6 +13,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.net.URI;
 import java.time.Duration;
 
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,6 +34,27 @@ class DevProfileTest {
     @Autowired
     private MockMvc mvc;
 
+    @org.springframework.beans.factory.annotation.Value("${CSS_REQUESTER_PASSWORD}")
+    private String requesterPassword;
+
+    @Test
+    void realLoginLogoutRejectsReplayedToken() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        String body = mapper.writeValueAsString(java.util.Map.of(
+                "username", "requester", "password", requesterPassword));
+        var login = mvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn();
+        String token = mapper.readTree(login.getResponse().getContentAsString()).get("accessToken").asText();
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.username").value("requester"));
+        mvc.perform(post("/api/v1/auth/logout").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/me").header("Authorization", "Bearer broken.token.value"))
+                .andExpect(status().isUnauthorized());
+    }
+
     @Test
     void bindsDownstreamConfigurationWithoutCallingIt() {
         assertEquals(URI.create("http://localhost:9090"), downstream.baseUrl());
@@ -45,20 +68,43 @@ class DevProfileTest {
                 .andExpect(jsonPath("$.status").value("UP"))
                 .andExpect(jsonPath("$.components").doesNotExist());
         mvc.perform(get("/actuator/info"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.app.name").value("Purchase Tracker"));
+                .andExpect(status().isUnauthorized());
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"env", "beans", "heapdump", "shutdown"})
     void otherActuatorEndpointsAreNotExposed(String endpoint) throws Exception {
-        mvc.perform(get("/actuator/{endpoint}", endpoint)).andExpect(status().isNotFound());
+        mvc.perform(get("/actuator/{endpoint}", endpoint)).andExpect(status().isUnauthorized());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"requester", "unregistered"})
+    void badCredentialsShareOneResponse(String username) throws Exception {
+        mvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON)
+                        .header("X-Correlation-Id", "login-check")
+                        .content("{\"username\":\"" + username + "\",\"password\":\"wrong\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
+                .andExpect(jsonPath("$.message").value("bad username or password"))
+                .andExpect(jsonPath("$.correlationId").value("login-check"));
+    }
+
+    @Test
+    void blankLoginFieldIsInvalid() throws Exception {
+        mvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON)
+                        .content("{\"username\":\"\",\"password\":\"irrelevant\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION"))
+                .andExpect(jsonPath("$.message").value("username must not be blank"));
     }
 
     @Test
     void publishesOpenApiContract() throws Exception {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/v1/auth/login'].post.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/me'].get.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/purchase-requests/{id}/approve'].post.responses['403']").exists())
                 .andExpect(jsonPath(API + ".post.responses['201'].headers.Location").exists())
                 .andExpect(jsonPath(API + ".post.responses['400']").exists())
                 .andExpect(jsonPath(API + ".post.responses['409']").exists())

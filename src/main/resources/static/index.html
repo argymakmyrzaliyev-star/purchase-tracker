@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Purchase Tracker · Request desk</title>
+  <link rel="stylesheet" href="/portal.css">
+  <script src="/portal.js" defer></script>
+</head>
+<body>
+<header><span class="mark" aria-hidden="true">P</span><strong>Purchase Tracker</strong><span class="session" id="session">Signed out</span></header>
+<main>
+  <h1>Purchase requests</h1>
+  <div class="grid">
+    <section aria-labelledby="account-title">
+      <h2 id="account-title">Account</h2>
+      <form id="login">
+        <label>Username<input name="username" autocomplete="username" required></label>
+        <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+        <button type="submit">Sign in</button>
+      </form>
+      <div id="identity" hidden><strong id="who"></strong><p id="role"></p><p id="expiry"></p><button id="logout" class="secondary">Sign out</button></div>
+      <details open><summary>Dev-only accounts</summary>
+        <dl><dt>REQUESTER</dt><dd>requester — password shown in the local launcher</dd><dt>APPROVER</dt><dd>approver — password shown in the local launcher</dd></dl>
+      </details>
+    </section>
+    <section aria-labelledby="request-title">
+      <h2 id="request-title">Request desk</h2>
+      <form id="create">
+        <label>Business key<input name="businessKey" placeholder="PR-1042" required></label>
+        <label>Purchase title<input name="title" placeholder="Monitors for room 3" required maxlength="120"></label>
+        <button type="submit">Create draft</button>
+      </form>
+      <div class="lookup">
+        <label for="request-id">Request UUID</label><input id="request-id" placeholder="Filled in when you create a draft">
+        <div class="actions"><button id="read" class="secondary">Read request</button><button id="approve">Approve request</button></div>
+      </div>
+    </section>
+  </div>
+  <section class="result" aria-live="polite" aria-atomic="true"><h2>Latest response</h2><div id="result">No requests yet.</div></section>
+</main>
+</body>
+</html>

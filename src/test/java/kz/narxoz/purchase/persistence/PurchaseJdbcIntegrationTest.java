@@ -14,6 +14,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.test.context.support.WithMockUser;
+
 import javax.sql.DataSource;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,6 +49,25 @@ class PurchaseJdbcIntegrationTest {
                 jdbc.queryForObject("SELECT current_schema()", String.class));
         jdbc.execute("DROP TABLE IF EXISTS purchase_tracker_lab3_test.purchase_request");
         jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V1__purchase_request.sql")));
+    }
+
+    @Test
+    @WithMockUser(roles = "REQUESTER")
+    void serviceRejectsRequesterAndPreservesDraft() {
+        var draft = service.register(PurchaseId.newId(), "PR-JUNIOR", "Laptop");
+        assertThrows(AccessDeniedException.class, () -> service.approve(draft.id(), "requester"));
+        assertEquals(draft, service.require(draft.id()));
+    }
+
+    @Test
+    @WithMockUser(roles = "APPROVER")
+    void approvalPersistsAndCannotBeRepeated() {
+        var draft = service.register(PurchaseId.newId(), "PR-SENIOR", "Laptop");
+        var approved = service.approve(draft.id(), "approver");
+        assertEquals(PurchaseStatus.APPROVED, approved.status());
+        assertEquals(approved, service.require(draft.id()));
+        assertThrows(InvalidTransition.class, () -> service.approve(draft.id(), "approver"));
+        assertEquals(approved, service.require(draft.id()));
     }
 
     @Test

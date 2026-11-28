@@ -6,6 +6,8 @@ import java.util.Optional;
 public interface PurchaseRepository {
     void insert(PurchaseRequest purchase);
 
+    boolean updateStatus(PurchaseId id, PurchaseStatus expected, PurchaseStatus next);
+
     long count(PurchaseKey businessKey);
 
     Optional<PurchaseRequest> find(PurchaseKey businessKey);

@@ -4,6 +4,7 @@ import kz.narxoz.purchase.domain.DuplicatePurchase;
 import kz.narxoz.purchase.domain.PurchaseId;
 import kz.narxoz.purchase.domain.PurchaseKey;
 import kz.narxoz.purchase.domain.PurchaseRepository;
+import kz.narxoz.purchase.domain.PurchaseStatus;
 import kz.narxoz.purchase.domain.PurchaseRequest;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -41,6 +42,12 @@ public class PurchaseJdbc implements PurchaseRepository {
             // Other integrity errors, such as CHECK violations, are not relabeled.
             throw new DuplicatePurchase(purchase.businessKey(), ex);
         }
+    }
+
+    @Override
+    public boolean updateStatus(PurchaseId id, PurchaseStatus expected, PurchaseStatus next) {
+        return jdbc.update("UPDATE purchase_request SET status = ? WHERE id = ? AND status = ?",
+                PurchaseStatusMapper.toDatabase(next), id.value(), PurchaseStatusMapper.toDatabase(expected)) == 1;
     }
 
     @Override
